@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# ssh — SSH helpers and jump host config
+# Usage: ssh <subcommand>
+#
+# Subcommands:
+#   all             - run all ssh diagnostics
+#   list-configs    - list known SSH jump configs
+#   jump <host>     - jump to a host via SSH config
+#   last-login      - show last login timestamps
+#   key-list        - list SSH keys added to agent
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+LIB_DIR="$REPO_ROOT/lib"
+
+# shellcheck source=/dev/null
+source "$LIB_DIR/os.sh"
+
+# ── Helpers ────────────────────────────────────────────────────────────────
+log_info()  { printf "[INFO] %s\n" "$*" >&2; }
+log_warn()  { printf "[WARN] %s\n" "$*" >&2; }
+log_err()   { printf "[ERR] %s\n" "$*" >&2; exit 1; }
+
+usage() {
+  printf "Usage: ssh <subcommand> [args]\n"
+  printf "Subcommands:\n"
+  printf "  all         - run all SSH diagnostics\n"
+  printf "   list-configs       - list known SSH jump hosts/configs\n"
+  printf "   jump <host>        - jump to a host via SSH config\n"
+  printf "   last-login         - show last login timestamps\n"
+  printf "   key-list           - list SSH keys in agent\n"
+  exit 1
+}
+
+# ── list-configs ───────────────────────────────────────────────────────────
+cmd_list_configs() {
+  printf "=== SSH Jump Host Configs ===\n"
+  # Look for config in ~/.ssh/config or repo-level config
+  local config_file="${HOME}/.ssh/config"
+  if [[ -f "$config_file" ]]; then
+    grep -E "^Host " "$config_file" 2>/dev/null || log_warn "No Host entries in $config_file"
+  else
+    log_warn "No ~/.ssh/config found"
+  fi
+
+  # Also check repo-level
+  local repo_config="$REPO_ROOT/.ssh/config"
+  if [[ -f "$repo_config" ]]; then
+    printf "\n--- Repo-level config: $repo_config ---\n"
+    grep -E "^Host " "$repo_config" 2>/dev/null || log_warn "No Host entries"
+  fi
+}
+
+# ── jump ───────────────────────────────────────────────────────────────────
+cmd_jump() {
+  local host="${1:-}"
+  if [[ -z "$host" ]]; then
+    log_err "Usage: ssh jump <host>"
+  fi
+  printf "=== Jumping to: %s ===\n" "$host"
+  ssh "$host" 2>/dev/null || log_err "SSH to '$host' failed"
+}
+
+# ── last-login ─────────────────────────────────────────────────────────────
+cmd_last_login() {
+  printf "=== Last Logins ===\n"
+  last -n 10 2>/dev/null || log_warn "last command not available"
+  printf "\n=== Lastlog ===\n"
+  lastlog 2>/dev/null || log_warn "lastlog not available"
+}
+
+# ── key-list ───────────────────────────────────────────────────────────────
+cmd_key_list() {
+  printf "=== SSH Keys in Agent ===\n"
+  ssh-add -l 2>/dev/null || log_warn "ssh-add -l failed (no agent or no keys)"
+}
+
+# ── all ────────────────────────────────────────────────────────────────────
+cmd_all() {
+  cmd_list_configs
+  printf "\n---\n"
+  cmd_last_login
+  printf "\n---\n"
+  cmd_key_list
+}
+
+# ── Main dispatch ──────────────────────────────────────────────────────────
+case "${1:-}" in
+  list-configs)       cmd_list_configs ;;
+  jump)               shift; cmd_jump "$@" ;;
+  last-login)         cmd_last_login ;;
+  key-list)           cmd_key_list ;;
+  all)                cmd_all ;;
+  *)                  usage ;;
+esac

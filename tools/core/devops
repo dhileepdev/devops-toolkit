@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# devops — unified entry point for the devops-toolkit CLIs
+# Usage: devops <command> [args]
+#
+# Commands: diag, net, k8s, docker, ssh, explore, bootstrap, version
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+usage() {
+  cat <<EOF
+devops-toolkit — unified CLI
+
+Usage: devops <command> [args]
+
+Commands:
+  diag      System diagnostics (uptime, mem, cpu, disk, boot-time)
+  net       Network checks (ping, port, dns, trace, myip)
+  k8s       Kubernetes helpers (ctx, get-pods, get-nodes, get-logs)
+  docker    Docker helpers (ps, images, prune, logs, top)
+  ssh       SSH helpers (list-configs, jump, last-login, key-list)
+  explore   Tool discovery (search, describe, list-installed, suggest)
+  bootstrap Run onboarding installer (--dry-run, --yes)
+  version   Print toolkit version
+
+Run 'devops <command>' with no args for command-specific help.
+EOF
+}
+
+cmd="${1:-}"
+shift || true
+
+case "$cmd" in
+  diag|net|k8s|docker|ssh|explore)
+    exec bash "$REPO_ROOT/tools/$cmd/$cmd" "$@"
+    ;;
+  bootstrap)
+    exec bash "$REPO_ROOT/packages/scripts/bootstrap.sh" "$@"
+    ;;
+  version)
+    printf "devops-toolkit %s\n" "$(git -C "$REPO_ROOT" describe --tags --always 2>/dev/null || echo "dev")"
+    ;;
+  ""|-h|--help|help)
+    usage
+    ;;
+  *)
+    printf "Unknown command: %s\n\n" "$cmd" >&2
+    usage >&2
+    exit 2
+    ;;
+esac

@@ -1,0 +1,193 @@
+#!/usr/bin/env bash
+# explore — Search for tools, check what's installed, suggest installs
+# Usage: explore <subcommand> [args]
+#
+# Subcommands:
+#   search <term>         - grep the toolkit's tool definitions for <term>
+#   list-installed        - check which tools from the kit are on PATH
+#   suggest               - suggest missing packages based on OS
+#   describe <tool>       - show what a tool does + install command
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+LIB_DIR="$REPO_ROOT/lib"
+
+# shellcheck source=/dev/null
+source "$LIB_DIR/os.sh"
+
+# ── Helpers ────────────────────────────────────────────────────────────────
+log_info()  { printf "[INFO] %s\n" "$*" >&2; }
+log_warn()  { printf "[WARN] %s\n" "$*" >&2; }
+log_err()   { printf "[ERR] %s\n" "$*" >&2; exit 1; }
+
+usage() {
+  printf "Usage: explore <subcommand> [args]\n"
+  printf "Subcommands:\n"
+  printf "  search <term>       - search tool definitions for <term>\n"
+  printf "  list-installed      - check which tools from the kit are on PATH\n"
+  printf "  suggest             - suggest missing packages based on OS\n"
+  printf "  describe <tool>     - show tool description + install command\n"
+  exit 1
+}
+
+# ── search: grep tool definitions ──────────────────────────────────────────
+cmd_search() {
+  local term="$1"
+  if [[ -z "$term" ]]; then
+    log_err "Usage: explore search <term>"
+  fi
+  log_info "Searching for '$term' across tool definitions..."
+  # Search in packages dir and tools dir for the term
+  grep -r "$term" "$REPO_ROOT/packages/" "$REPO_ROOT/tools/" 2>/dev/null || log_warn "No matches found."
+}
+
+# ── list-installed: check PATH for known tools ─────────────────────────────
+cmd_list_installed() {
+  log_info "Checking which devops-toolkit tools are on PATH..."
+  local found=0
+  local total=0
+
+  # Core tools we track
+  local tools=(
+    "kubectl" "helm" "stern" "k9s" "docker" "fzf" "bat" "delta" "jq" "yq"
+    "httpie" "nmap" "nc" "tldr" "coreutils" "git" "zsh" "starship"
+  )
+
+  for tool in "${tools[@]}"; do
+    total=$((total + 1))
+    if command -v "$tool" >/dev/null 2>&1; then
+      printf "  ✅ %s\n" "$tool"
+      found=$((found + 1))
+    else
+      printf "  ❌ %s\n" "$tool"
+    fi
+  done
+
+  log_info "Found $found / $total tools on PATH."
+}
+
+# ── suggest: suggest missing packages ──────────────────────────────────────
+cmd_suggest() {
+  log_info "Suggesting packages to install for $(is_macos && echo "macOS" || echo "Linux ($DISTRO)")..."
+
+  if is_macos; then
+    log_info "Run: brew install <formula>"
+    # Could cross-reference with packages/macos.brew.txt
+    brew list --formula 2>/dev/null | while read -r f; do
+      printf "  installed: %s\n" "$f"
+    done || true
+
+  elif is_linux; then
+    log_info "Run: sudo apt-get install <package>"
+    # Could cross-reference with packages/linux.apt.txt
+  fi
+
+  # Show what's in the package lists
+  log_info "Available package lists:"
+  if [[ -f "$REPO_ROOT/packages/macos.brew.txt" ]]; then
+    printf "  macOS: %s packages (see packages/macos.brew.txt)\n" \
+      "$(grep -v '^[[:space:]]*#' "$REPO_ROOT/packages/macos.brew.txt" | wc -l)"
+  fi
+  if [[ -f "$REPO_ROOT/packages/linux.apt.txt" ]]; then
+    printf "  Linux: %s packages (see packages/linux.apt.txt)\n" \
+      "$(grep -v '^[[:space:]]*#' "$REPO_ROOT/packages/linux.apt.txt" | wc -l)"
+  fi
+}
+
+# ── describe: show tool description + install ──────────────────────────────
+cmd_describe() {
+  local tool="$1"
+  if [[ -z "$tool" ]]; then
+    log_err "Usage: describe <tool>"
+  fi
+
+  log_info "Tool: $tool"
+  log_info "---"
+
+  case "$tool" in
+    kubectl)
+      printf "  Description: k8s CLI\n"
+      printf "  Install (macOS): brew install kubectl\n"
+      printf "  Install (Linux): sudo apt-get install -y kubectl\n"
+      ;;
+    helm)
+      printf "  Description: k8s package manager\n"
+      printf "  Install (macOS): brew install helm\n"
+      printf "  Install (Linux): sudo apt-get install -y helm\n"
+      ;;
+    k9s)
+      printf "  Description: k8s terminal UI\n"
+      printf "  Install (macOS): brew install k9s\n"
+      printf "  Install (Linux): brew install k9s (may need binary)\n"
+      ;;
+    fzf)
+      printf "  Description: fuzzy finder\n"
+      printf "  Install (macOS): brew install fzf\n"
+      printf "  Install (Linux): sudo apt-get install -y fzf\n"
+      ;;
+    bat)
+      printf "  Description: cat clone with wings\n"
+      printf "  Install (macOS): brew install bat\n"
+      printf "  Install (Linux): sudo apt-get install -y bat\n"
+      ;;
+    delta)
+      printf "  Description: git diff viewer\n"
+      printf "  Install (macOS): brew install delta\n"
+      printf "  Install (Linux): sudo apt-get install -y delta\n"
+      ;;
+    jq)
+      printf "  Description: JSON processor\n"
+      printf "  Install (macOS): brew install jq\n"
+      printf "  Install (Linux): sudo apt-get install -y jq\n"
+      ;;
+    yq)
+      printf "  Description: YAML processor\n"
+      printf "  Install (macOS): brew install yq\n"
+      printf "  Install (Linux): sudo apt-get install -y yq\n"
+      ;;
+    httpie)
+      printf "  Description: user-friendly HTTP client\n"
+      printf "  Install (macOS): brew install httpie\n"
+      printf "  Install (Linux): sudo apt-get install -y httpie\n"
+      ;;
+    nmap)
+      printf "  Description: network scanner\n"
+      printf "  Install (macOS): brew install nmap\n"
+      printf "  Install (Linux): sudo apt-get install -y nmap\n"
+      ;;
+    tldr)
+      printf "  Description: condensed man pages\n"
+      printf "  Install (macOS): brew install tldr\n"
+      printf "  Install (Linux): sudo apt-get install -y tldr\n"
+      ;;
+    zsh)
+      printf "  Description: shell (oh-my-zsh, zplug, etc)\n"
+      printf "  Install (macOS): brew install zsh\n"
+      printf "  Install (Linux): sudo apt-get install -y zsh\n"
+      ;;
+    starship)
+      printf "  Description: shell prompt\n"
+      printf "  Install (macOS): brew install starship\n"
+      printf "  Install (Linux): curl -sS https://starship.rs/install.sh | sh\n"
+      ;;
+    thefuck)
+      printf "  Description: correct last command\n"
+      printf "  Install (macOS): brew install thefuck\n"
+      printf "  Install (Linux): sudo apt-get install -y thefuck\n"
+      ;;
+    *)
+      log_warn "No description available for '$tool'. It may not be in the kit yet."
+      ;;
+  esac
+}
+
+# ── Main dispatch ──────────────────────────────────────────────────────────
+case "${1:-}" in
+  search)     shift; cmd_search "$@" ;;
+  list-installed) cmd_list_installed ;;
+  suggest)    cmd_suggest ;;
+  describe)   shift; cmd_describe "$@" ;;
+  *)          usage ;;
+esac

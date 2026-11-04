@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+# diag — System diagnostics (disk, mem, cpu, uptime, load, boot time)
+# Usage: diag <subcommand>
+#
+# Subcommands:
+#   all             - run everything
+#   uptime          - system uptime and load
+#   mem             - memory usage
+#   cpu             - CPU info/load
+#   disk            - disk usage
+#   boot-time       - system boot time
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+LIB_DIR="$REPO_ROOT/lib"
+
+# shellcheck source=/dev/null
+source "$LIB_DIR/os.sh"
+
+# ── Helpers ────────────────────────────────────────────────────────────────
+log_info()  { printf "[INFO] %s\n" "$*" >&2; }
+log_warn()  { printf "[WARN] %s\n" "$*" >&2; }
+log_err()   { printf "[ERR] %s\n" "$*" >&2; exit 1; }
+
+usage() {
+  printf "Usage: diag <subcommand>\n"
+  printf "Subcommands:\n"
+  printf "  all         - run all diagnostics\n"
+  printf "  uptime      - system uptime and load\n"
+  printf "  mem         - memory usage\n"
+  printf "  cpu         - CPU info and load\n"
+  printf "  disk        - disk usage\n"
+  printf "  boot-time   - system boot time\n"
+  exit 1
+}
+
+# ── uptime ─────────────────────────────────────────────────────────────────
+cmd_uptime() {
+  printf "=== System Uptime ===\n"
+  uptime
+  printf "\n=== System Load ===\n"
+  cat /proc/loadavg 2>/dev/null || sysctl -n vm.loadavg 2>/dev/null || log_warn "Could not read load average"
+  printf "\n=== Boot Time ===\n"
+  who -b 2>/dev/null || log_warn "Could not determine boot time"
+}
+
+# ── mem ────────────────────────────────────────────────────────────────────
+cmd_mem() {
+  printf "=== Memory Usage ===\n"
+  if is_macos; then
+    vm_stat 2>/dev/null || log_warn "vm_stat not available"
+    printf "\n=== Meminfo (if available) ===\n"
+    cat /vm-stats 2>/dev/null || true
+  elif is_linux; then
+    free -h
+    printf "\n=== /proc/meminfo summary ===\n"
+    head -n 5 /proc/meminfo 2>/dev/null || true
+  fi
+}
+
+# ── cpu ────────────────────────────────────────────────────────────────────
+cmd_cpu() {
+  printf "=== CPU Info ===\n"
+  if is_macos; then
+    sysctl -n machdep.cpu.brand_string 2>/dev/null || printf "  (brand string unavailable)\n"
+    printf "\nCPU Count: $(sysctl -n hw.ncpu 2>/dev/null)\n"
+  elif is_linux; then
+    lscpu 2>/dev/null || cat /proc/cpuinfo | grep "model name" | head -n 1
+    printf "\nCPU Count: $(nproc 2>/dev/null)\n"
+  fi
+
+  printf "\n=== CPU Load ===\n"
+  cat /proc/loadavg 2>/dev/null || log_warn "Could not read load average"
+}
+
+# ── disk ───────────────────────────────────────────────────────────────────
+cmd_disk() {
+  printf "=== Disk Usage ===\n"
+  if is_macos; then
+    df -H
+  elif is_linux; then
+    df -h
+  fi
+
+  printf "\n=== Disk Space (inodes) ===\n"
+  if is_macos; then
+    df -i 2>/dev/null || true
+  elif is_linux; then
+    df -i 2>/dev/null || true
+  fi
+}
+
+# ── boot-time ──────────────────────────────────────────────────────────────
+cmd_boot_time() {
+  printf "=== System Boot Time ===\n"
+  if is_macos; then
+    sysctl -n kern.boottime 2>/dev/null | awk -F'[=,]*' '{print "  "$2" "$3" "$4}' || log_warn "Could not read boot time"
+  elif is_linux; then
+    who -b 2>/dev/null || log_warn "Could not read boot time"
+    # Also show /proc/uptime companion
+    cat /proc/uptime 2>/dev/null | awk '{printf "  Uptime: %.1f seconds (%.1f hours)\n", $1, $1/3600}'
+  fi
+}
+
+# ── all ────────────────────────────────────────────────────────────────────
+cmd_all() {
+  cmd_uptime
+  printf "\n========================\n"
+  cmd_mem
+  printf "\n========================\n"
+  cmd_cpu
+  printf "\n========================\n"
+  cmd_disk
+  printf "\n========================\n"
+  cmd_boot_time
+}
+
+# ── Main dispatch ──────────────────────────────────────────────────────────
+case "${1:-}" in
+  uptime)     cmd_uptime ;;
+  mem)        cmd_mem ;;
+  cpu)        cmd_cpu ;;
+  disk)       cmd_disk ;;
+  boot-time)  cmd_boot_time ;;
+  all)        cmd_all ;;
+  *)          usage ;;
+esac

@@ -1,0 +1,56 @@
+# packages/linux.apt.txt — APT packages every SRE should have
+# install with: sudo apt-get update && sudo apt-get install -y $(cat packages/linux.apt.txt)
+
+# Core utils
+git
+curl
+wget
+jq
+yq  # python3-yq or yq binary
+zsh
+fzf
+bat
+delta
+httpie
+starship
+thefuck
+tldr
+
+# Network & connectivity
+nmap
+netcat-openbsd  # or "nc" package name
+telnet
+iproute2  # ip, route, ss commands
+dnsutils  # dig, nslookup
+mtr  # network diagnostic tool
+whois
+
+# Observability & tracing
+k9s  # may need deb backport or binary install
+stern
+kubectl  # apt.kubernetes.io/apt
+kustomize
+helm
+argocd
+
+# SSH & remote
+ssh-copy-id
+sshfs
+
+# Virtualization & containers
+docker.io
+containerd.io
+runc
+crictl
+k9s  # install binary if apt unavailable
+stern  # install binary if apt unavailable
+
+# Misc
+htop
+bottom  # bpftop or btm (bpftop needs linux kernel tools)
+fd-find
+ripgrep
+zoxide
+syncthing
+tlp  # laptop battery auto-tuning
+powerline-go

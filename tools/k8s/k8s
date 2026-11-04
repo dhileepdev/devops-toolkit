@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# k8s — Kubernetes diagnostics and helpers
+# Usage: k8s <subcommand>
+#
+# Subcommands:
+#   all             - run all k8s diagnostics
+#   get-pods        - list pods across namespaces
+#   get-nodes       - list nodes
+#   get-logs <pod>  - get pod logs (interactive namespace select)
+#   describe <res>  - describe a resource
+#   ctx <name>      - set kubeconfig context
+#   ctx             - show current context
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+LIB_DIR="$REPO_ROOT/lib"
+
+# shellcheck source=/dev/null
+source "$LIB_DIR/os.sh"
+
+# ── Helpers ────────────────────────────────────────────────────────────────
+log_info()  { printf "[INFO] %s\n" "$*" >&2; }
+log_warn()  { printf "[WARN] %s\n" "$*" >&2; }
+log_err()   { printf "[ERR] %s\n" "$*" >&2; exit 1; }
+
+usage() {
+  printf "Usage: k8s <subcommand> [args]\n"
+  printf "Subcommands:\n"
+  printf "  all         - run all k8s diagnostics\n"
+  printf "  ctx [name]  - set/show kubeconfig context\n"
+  printf "   get-pods        - list pods across namespaces\n"
+  printf "   get-nodes       - list nodes\n"
+  printf "   describe <res>  - describe a resource\n"
+  printf "   get-logs <pod>  - get pod logs\n"
+  exit 1
+}
+
+# ── ctx ──────────────────────────────────────────────────────────────────
+cmd_ctx() {
+  local name="${1:-}"
+  if [[ -n "$name" ]]; then
+    printf "Setting context to: %s\n" "$name"
+    kubectl config use-context "$name" 2>/dev/null || log_err "Failed to set context '$name'"
+  else
+    printf "Current context: \n"
+    kubectl config current-context 2>/dev/null || log_err "No kubeconfig found"
+  fi
+}
+
+# ── get-pods ─────────────────────────────────────────────────────────────
+cmd_get_pods() {
+  printf "=== Pods (all namespaces) ===\n"
+  kubectl get pods --all-namespaces 2>/dev/null || log_err "kubectl failed — ensure kubeconfig is set"
+}
+
+# ── get-nodes ────────────────────────────────────────────────────────────
+cmd_get_nodes() {
+  printf "=== Nodes ===\n"
+  kubectl get nodes 2>/dev/null || log_err "kubectl failed"
+}
+
+# ── describe ─────────────────────────────────────────────────────────────
+cmd_describe() {
+  local res="${1:-}"
+  if [[ -z "$res" ]]; then
+    log_err "Usage: k8s describe <resource>"
+  fi
+  printf "=== Describe: %s ===\n" "$res"
+  kubectl describe "$res" 2>/dev/null || log_err "kubectl describe failed"
+}
+
+# ── get-logs ─────────────────────────────────────────────────────────────
+cmd_get_logs() {
+  local pod="${1:-}"
+  if [[ -z "$pod" ]]; then
+    log_err "Usage: k8s get-logs <pod>"
+  fi
+  printf "=== Logs for: %s ===\n" "$pod"
+  kubectl logs "$pod" 2>/dev/null || log_err "kubectl logs failed"
+}
+
+# ── all ────────────────────────────────────────────────────────────────────
+cmd_all() {
+  cmd_ctx
+  printf "\n---\n"
+  cmd_get_nodes
+  printf "\n---\n"
+  cmd_get_pods
+}
+
+# ── Main dispatch ──────────────────────────────────────────────────────────
+case "${1:-}" in
+  ctx)        shift; cmd_ctx "$@" ;;
+  get-pods)   cmd_get_pods ;;
+  get-nodes)  cmd_get_nodes ;;
+  describe)   shift; cmd_describe "$@" ;;
+  get-logs)   shift; cmd_get_logs "$@" ;;
+  all)        cmd_all ;;
+  *)          usage ;;
+esac

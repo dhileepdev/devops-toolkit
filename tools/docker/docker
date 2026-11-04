@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+# docker — Docker diagnostics and helpers
+# Usage: docker <subcommand>
+#
+# Subcommands:
+#   all             - run all docker diagnostics
+#   ps              - list containers
+#   images          - list images, sorted by size
+#   prune           - prune unused resources
+#   logs <container>  - container logs
+#   top <container>   - container top
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+LIB_DIR="$REPO_ROOT/lib"
+
+# shellcheck source=/dev/null
+source "$LIB_DIR/os.sh"
+
+# ── Helpers ────────────────────────────────────────────────────────────────
+log_info()  { printf "[INFO] %s\n" "$*" >&2; }
+log_warn()  { printf "[WARN] %s\n" "$*" >&2; }
+log_err()   { printf "[ERR] %s\n" "$*" >&2; exit 1; }
+
+usage() {
+  printf "Usage: docker <subcommand> [args]\n"
+  printf "Subcommands:\n"
+  printf "  all         - run all docker diagnostics\n"
+  printf "   ps              - list running containers\n"
+  printf "   images          - list images, sorted by size\n"
+  printf "   prune           - prune unused resources\n"
+  printf "   logs <container>  - container logs\n"
+  printf "   top <container>   - container top processes\n"
+  exit 1
+}
+
+# ── ps ─────────────────────────────────────────────────────────────────────
+cmd_ps() {
+  printf "=== Running Containers ===\n"
+  docker ps --format "table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}"
+}
+
+# ── images ────────────────────────────────────────────────────────────────
+cmd_images() {
+  printf "=== Docker Images (sorted by size) ===\n"
+  docker images --format "{{.Repository}}:{{.Tag}}\t{{.Size}}" | sort -h -r
+}
+
+# ── prune ──────────────────────────────────────────────────────────────────
+cmd_prune() {
+  printf "=== Pruning unused Docker resources ===\n"
+  docker system prune -a --volumes 2>/dev/null || log_warn "prune failed or needs confirmation"
+}
+
+# ── logs ───────────────────────────────────────────────────────────────────
+cmd_logs() {
+  local container="${1:-}"
+  if [[ -z "$container" ]]; then
+    log_err "Usage: docker logs <container>"
+  fi
+  printf "=== Logs for: %s ===\n" "$container"
+  docker logs "$container" 2>/dev/null || log_err "docker logs failed"
+}
+
+# ── top ────────────────────────────────────────────────────────────────────
+cmd_top() {
+  local container="${1:-}"
+  if [[ -z "$container" ]]; then
+    log_err "Usage: docker top <container>"
+  fi
+  printf "=== Top processes in: %s ===\n" "$container"
+  docker top "$container" -eo pid,comm,pcpu,pmem 2>/dev/null || log_err "docker top failed"
+}
+
+# ── all ────────────────────────────────────────────────────────────────────
+cmd_all() {
+  cmd_ps
+  printf "\n---\n"
+  cmd_images
+}
+
+# ── Main dispatch ──────────────────────────────────────────────────────────
+case "${1:-}" in
+  ps)     cmd_ps ;;
+  images) cmd_images ;;
+  prune)  cmd_prune ;;
+  logs)   shift; cmd_logs "$@" ;;
+  top)    shift; cmd_top "$@" ;;
+  all)    cmd_all ;;
+  *)      usage ;;
+esac

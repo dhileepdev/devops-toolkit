@@ -1,0 +1,56 @@
+# packages/macos.brew.txt — Homebrew packages every SRE should have
+# install with: brew install $(cat packages/macos.brew.txt)
+# One formula per line. Inline comments (# ...) are ignored by installers.
+
+# Core utils
+coreutils
+git
+wget
+curl
+jq
+yq
+zsh
+fzf
+bat
+git-delta
+httpie
+starship
+thefuck
+tldr
+
+# Network & connectivity
+nmap
+netcat
+telnet
+mtr
+
+# Kubernetes
+k9s
+stern
+kubectl
+kustomize
+helm
+argocd
+grpcurl
+
+# SSH & remote
+ssh-copy-id
+sshpass
+sshfs
+
+# Containers
+docker
+colima
+
+# Misc
+mas
+htop
+bottom
+fd
+ripgrep
+syncthing
+zoxide
+ffmpeg
+pngquant
+trash
+powerline-go

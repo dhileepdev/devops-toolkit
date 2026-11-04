@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+# net — Network diagnostics and connectivity checks
+# Usage: net <subcommand>
+#
+# Subcommands:
+#   all             - run everything
+#   ping <host>     - ping a host
+#   port <host> <port>  - check port connectivity
+#   dns <domain>    - DNS lookup
+#   trace <host>    - traceroute / tracepath
+#   myip            - show external IP
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+LIB_DIR="$REPO_ROOT/lib"
+
+# shellcheck source=/dev/null
+source "$LIB_DIR/os.sh"
+
+# ── Helpers ────────────────────────────────────────────────────────────────
+log_info()  { printf "[INFO] %s\n" "$*" >&2; }
+log_warn()  { printf "[WARN] %s\n" "$*" >&2; }
+log_err()   { printf "[ERR] %s\n" "$*" >&2; exit 1; }
+
+usage() {
+  printf "Usage: net <subcommand> [args]\n"
+  printf "Subcommands:\n"
+  printf "  all         - run all network diagnostics\n"
+  printf "  ping <host>       - ping a host\n"
+  printf "  port <host> <port> - check TCP port connectivity\n"
+  printf "  dns <domain>      - DNS lookup\n"
+  printf "  trace <host>      - traceroute / tracepath\n"
+  printf "  myip              - show external IP address\n"
+  exit 1
+}
+
+# ── ping ───────────────────────────────────────────────────────────────────
+cmd_ping() {
+  local host="${1:-}"
+  if [[ -z "$host" ]]; then
+    log_err "Usage: net ping <host>"
+  fi
+  printf "=== Ping: %s ===\n" "$host"
+  ping -c 4 "$host" 2>/dev/null || log_warn "Ping failed or not available"
+}
+
+# ── port ───────────────────────────────────────────────────────────────────
+cmd_port() {
+  local host="${1:-}"
+  local port="${2:-}"
+  if [[ -z "$host" || -z "$port" ]]; then
+    log_err "Usage: net port <host> <port>"
+  fi
+  printf "=== Port check: %s:%s ===\n" "$host" "$port"
+  # Use nc (netcat) if available
+  if command -v nc >/dev/null 2>&1; then
+    timeout 3 nc -z -v "$host" "$port" 2>&1 || log_warn "Port $port closed/unreachable on $host"
+  else
+    log_warn "nc (netcat) not available — install nmap or netcat for port checks"
+  fi
+}
+
+# ── dns ────────────────────────────────────────────────────────────────────
+
+cmd_dns() {
+  local domain="${1:-}"
+  if [[ -z "$domain" ]]; then
+    log_err "Usage: net dns <domain>"
+  fi
+  printf "=== DNS lookup: %s ===\n" "$domain"
+  if command -v dig >/dev/null 2>&1; then
+    dig +short "$domain" 2>/dev/null || log_warn "dig lookup failed"
+  elif command -v nslookup >/dev/null 2>&1; then
+    nslookup "$domain" 2>/dev/null || log_warn "nslookup failed"
+  else
+    log_warn "No DNS tool (dig/nslookup) available"
+  fi
+}
+
+# ── trace ──────────────────────────────────────────────────────────────────
+cmd_trace() {
+  local host="${1:-}"
+  if [[ -z "$host" ]]; then
+    log_err "Usage: net trace <host>"
+  fi
+  printf "=== Traceroute: %s ===\n" "$host"
+  if command -v traceroute >/dev/null 2>&1; then
+    traceroute "$host" 2>/dev/null | head -n 30 || log_warn "traceroute failed"
+  elif command -v tracepath >/dev/null 2>&1; then
+    tracepath "$host" 2>/dev/null | head -n 30 || log_warn "tracepath failed"
+  else
+    log_warn "No traceroute tool available (install mtr, traceroute, or tracepath)"
+  fi
+}
+
+# ── myip ───────────────────────────────────────────────────────────────────
+cmd_myip() {
+  printf "=== External IP ===\n"
+  local ip=""
+  for svc in "https://ifconfig.me" "https://ipinfo.io/ip" "https://api.ipify.org"; do
+    ip=$(curl -fsS --max-time 5 "$svc" 2>/dev/null) || continue
+    # Validate it looks like an IP, not an HTML error page
+    if [[ "$ip" =~ ^[0-9a-fA-F:.]+$ ]]; then
+      printf "  %s\n" "$ip"
+      return 0
+    fi
+  done
+  log_warn "Could not determine external IP — check internet connectivity"
+}
+
+# ── all ────────────────────────────────────────────────────────────────────
+cmd_all() {
+  cmd_myip
+  printf "\n---\n"
+  cmd_dns "google.com"
+  printf "\n---\n"
+  cmd_ping "8.8.8.8"
+  printf "\n---\n"
+  cmd_trace "8.8.8.8"
+}
+
+# ── Main dispatch ──────────────────────────────────────────────────────────
+case "${1:-}" in
+  ping)       shift; cmd_ping "$@" ;;
+  port)       shift; cmd_port "$@" ;;
+  dns)        shift; cmd_dns "$@" ;;
+  trace)      shift; cmd_trace "$@" ;;
+  myip)       cmd_myip ;;
+  all)        cmd_all ;;
+  *)          usage ;;
+esac
