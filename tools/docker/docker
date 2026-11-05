@@ -45,13 +45,25 @@ cmd_ps() {
 # ── images ────────────────────────────────────────────────────────────────
 cmd_images() {
   printf "=== Docker Images (sorted by size) ===\n"
-  docker images --format "{{.Repository}}:{{.Tag}}\t{{.Size}}" | sort -h -r
+  docker images --format "{{.Repository}}:{{.Tag}}\t{{.Size}}" | sort -k2 -r
 }
 
 # ── prune ──────────────────────────────────────────────────────────────────
 cmd_prune() {
-  printf "=== Pruning unused Docker resources ===\n"
-  docker system prune -a --volumes 2>/dev/null || log_warn "prune failed or needs confirmation"
+  if [[ "${1:-}" == "--yes" ]]; then
+    printf "=== Pruning unused Docker resources ===\n"
+    docker system prune -a --volumes 2>/dev/null || log_warn "prune failed"
+  elif [[ "${1:-}" == "--dry-run" ]]; then
+    printf "=== DRY-RUN: would run: docker system prune -a --volumes ===\n"
+  else
+    printf "=== Pruning unused Docker resources ===\n"
+    read -rp "Destructive prune of all unused resources? Type 'yes' to confirm: " ans || ans=""
+    if [[ "$ans" != "yes" ]]; then
+      printf "Skipped.\n"
+      return 0
+    fi
+    docker system prune -a --volumes 2>/dev/null || log_warn "prune failed"
+  fi
 }
 
 # ── logs ───────────────────────────────────────────────────────────────────
@@ -85,9 +97,9 @@ cmd_all() {
 case "${1:-}" in
   ps)     cmd_ps ;;
   images) cmd_images ;;
-  prune)  cmd_prune ;;
-  logs)   shift; cmd_logs "$@" ;;
-  top)    shift; cmd_top "$@" ;;
+  prune)  shift || true; cmd_prune "$@" ;;
+  logs)   shift || true; cmd_logs "$@" ;;
+  top)    shift || true; cmd_top "$@" ;;
   all)    cmd_all ;;
   *)      usage ;;
 esac

@@ -96,7 +96,7 @@ cmd_disk() {
 cmd_boot_time() {
   printf "=== System Boot Time ===\n"
   if is_macos; then
-    sysctl -n kern.boottime 2>/dev/null | awk -F'[=,]*' '{print "  "$2" "$3" "$4}' || log_warn "Could not read boot time"
+    printf "  Boot time: %s\n" "$(sysctl -n kern.boottime 2>/dev/null)"
   elif is_linux; then
     who -b 2>/dev/null || log_warn "Could not read boot time"
     # Also show /proc/uptime companion

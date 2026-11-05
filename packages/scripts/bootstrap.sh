@@ -37,10 +37,10 @@ log_info "========================================="
 # ── OS-specific package install ────────────────────────────────────────────
 if is_macos; then
   log_info "Detected macOS — running brew install..."
-  bash "$SCRIPT_DIR/install-brew.sh" "${install_args[@]}"
+  bash "$SCRIPT_DIR/install-brew.sh" ${install_args[@]+"${install_args[@]}"}
 elif is_linux; then
   log_info "Detected Linux ($DISTRO) — running apt install..."
-  bash "$SCRIPT_DIR/install-apt.sh" "${install_args[@]}"
+  bash "$SCRIPT_DIR/install-apt.sh" ${install_args[@]+"${install_args[@]}"}
 else
   log_err "Unsupported OS: $OS"
 fi

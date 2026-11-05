@@ -89,7 +89,7 @@ cmd_all() {
 # ── Main dispatch ──────────────────────────────────────────────────────────
 case "${1:-}" in
   list-configs)       cmd_list_configs ;;
-  jump)               shift; cmd_jump "$@" ;;
+  jump)               shift || true; cmd_jump "$@" ;;
   last-login)         cmd_last_login ;;
   key-list)           cmd_key_list ;;
   all)                cmd_all ;;

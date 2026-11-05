@@ -33,7 +33,8 @@ alias hi="helm install"
 alias hu="helm upgrade"
 alias hst="helm status"
 
-# ---- Docker shortcuts -alias d="docker"
+# ---- Docker shortcuts
+alias d="docker"
 alias dk="docker"
 alias dki="docker image"
 alias dkps="docker ps"
@@ -52,11 +53,12 @@ eval $(thefuck --alias) 2>/dev/null || true
 alias f="thefuck"
 
 # ---- Quick network checks ----
-alias ip="ipaddr"
+alias ip="ifconfig"
 alias myip="curl -s ifconfig.me"
 alias ports="lsof -i -P -n | grep LISTEN"
 
-# ---- System overview -alias mem="vm_stat"
+# ---- System overview
+alias mem="vm_stat"
 alias cpu="top -l 1 | head -n 20"
 alias disk="df -h"
 
