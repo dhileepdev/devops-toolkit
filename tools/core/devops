@@ -42,7 +42,11 @@ case "$cmd" in
   version)
     printf "devops-toolkit %s\n" "$(git -C "$REPO_ROOT" describe --tags --always 2>/dev/null || echo "dev")"
     ;;
-  ""|-h|--help|help)
+  "")
+    usage
+    exit 1
+    ;;
+  -h|--help|help)
     usage
     ;;
   *)

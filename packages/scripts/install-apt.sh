@@ -48,7 +48,7 @@ while IFS= read -r pkg; do
   if $yes_flag; then
     sudo apt-get install -y "$pkg" 2>/dev/null || log_warn "Failed/skipped: $pkg"
   else
-    read -rp "Install $pkg? [y/N] " ans
+    read -rp "Install $pkg? [y/N] " ans || ans=""
     case "$ans" in
       [Yy]*) sudo apt-get install -y "$pkg" 2>/dev/null || log_warn "Failed/skipped: $pkg" ;;
       *) log_info "Skipped $pkg" ;;

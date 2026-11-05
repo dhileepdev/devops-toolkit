@@ -75,7 +75,7 @@ devops-toolkit/
 ## OS Support
 
 - **macOS** — tested on latest macOS, uses Homebrew
-- **Linux** — tested on Debian/Ubuntu/Fedora/CentOS/Arch; uses APT (Debian-derivatives). Add your distro's package list to `packages/linux.apt.txt` as needed.
+- **Linux** — APT path targets Debian/Ubuntu. macOS uses Homebrew.
 
 ## Contributing
 

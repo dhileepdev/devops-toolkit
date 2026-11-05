@@ -3,9 +3,9 @@
 ## Intent
 
 A portable, shared SRE/DevOps playbook for onboarding and tool discovery.
-Works on macOS and Linux (any distro). Team-maintained: one repo, one
-`bootstrap` command, per-tool scripts that anyone can read, review, or
-run individually.
+Works on macOS and Linux (APT installs target Debian/Ubuntu).
+Team-maintained: one repo, one `bootstrap` command, per-tool scripts that
+anyone can read, review, or run individually.
 
 ## Why
 

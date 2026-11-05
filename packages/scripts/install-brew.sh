@@ -47,7 +47,7 @@ while IFS= read -r pkg; do
   if $yes_flag; then
     brew install "$pkg" 2>/dev/null || log_warn "Failed/skipped: $pkg"
   else
-    read -rp "Install $pkg? [y/N] " ans
+    read -rp "Install $pkg? [y/N] " ans || ans=""
     case "$ans" in
       [Yy]*) brew install "$pkg" 2>/dev/null || log_warn "Failed/skipped: $pkg" ;;
       *) log_info "Skipped $pkg" ;;

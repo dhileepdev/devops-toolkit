@@ -72,7 +72,11 @@ cmd_cpu() {
   fi
 
   printf "\n=== CPU Load ===\n"
-  cat /proc/loadavg 2>/dev/null || log_warn "Could not read load average"
+  if is_macos; then
+    sysctl -n vm.loadavg 2>/dev/null || log_warn "Could not read load average"
+  else
+    cat /proc/loadavg 2>/dev/null || log_warn "Could not read load average"
+  fi
 }
 
 # ── disk ───────────────────────────────────────────────────────────────────

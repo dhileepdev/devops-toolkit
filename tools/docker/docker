@@ -52,7 +52,7 @@ cmd_images() {
 cmd_prune() {
   if [[ "${1:-}" == "--yes" ]]; then
     printf "=== Pruning unused Docker resources ===\n"
-    docker system prune -a --volumes 2>/dev/null || log_warn "prune failed"
+    docker system prune -a --volumes -f 2>/dev/null || log_warn "prune failed"
   elif [[ "${1:-}" == "--dry-run" ]]; then
     printf "=== DRY-RUN: would run: docker system prune -a --volumes ===\n"
   else
