@@ -66,7 +66,7 @@ devops-toolkit/
 
 ## Team Conventions
 
-- All scripts are POSIX-sh compatible; bash-isms guarded at runtime
+- All scripts use bash (`#!/usr/bin/env bash`).
 - Every script prints plain text to stdout, errors to stderr; exit codes: 0 success, 1 usage, 2 not-found
 - No secrets in this repo. Credentials, tokens, hostnames live in the user's shell config or vault.
 - `--dry-run` on `bootstrap`, `install-brew.sh`, `install-apt.sh` prints planned actions without executing.

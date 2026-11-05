@@ -71,15 +71,11 @@ devops-toolkit/
 
 - **bash** — OS detection, install/alias wiring, brew/apt manifests.
   Runs everywhere with zero build step.
-- **Python** — `explore` CLI (nicer parsing, JSON output,
-  cross-platform, stdlib only).
-- **Go** — reserved for small static binaries (port scanner,
-  http-probe) if they prove necessary; not required to use the kit.
+- **Python / Go** — not used; bash covers all toolkit needs today.
 
 ## Conventions
 
-- Scripts are POSIX-sh compatible where practical; bash-only features
-  are guarded with a runtime check.
+- Scripts use bash (`#!/usr/bin/env bash`).
 - Every tool prints plain text to stdout; errors to stderr; exit codes
   follow `0` success / `1` generic / `2` usage.
 - `--help` on every tool.

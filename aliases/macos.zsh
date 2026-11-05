@@ -63,4 +63,3 @@ alias cpu="top -l 1 | head -n 20"
 alias disk="df -h"
 
 # ---- Quick edit this repo ----
-alias dotfiles="cd /Users/dhileep/Desktop/Repos/Personal/devops-toolkit"
